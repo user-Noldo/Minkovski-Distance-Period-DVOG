@@ -2,7 +2,7 @@
 // © Noldo
 //@version=4
 
-study("Dependent Variable Odd Generator v2.1", shorttitle = "DVOG v2.1",overlay = false)
+study("Minkovski Distance Period DVOG",overlay = false)
 src = close 
 
 //Function Minkowski Distance :  All efforts goes to RicardoSantos 
