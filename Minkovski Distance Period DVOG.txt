@@ -1,0 +1,152 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Noldo
+//@version=4
+// MIT License
+
+//Copyright (c) 2019 user-Noldo
+
+//Permission is hereby granted, free of charge, to any person obtaining a copy
+//of this software and associated documentation files (the "Software"), to deal
+//in the Software without restriction, including without limitation the rights
+//to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//copies of the Software, and to permit persons to whom the Software is
+//furnished to do so, subject to the following conditions:
+
+//The above copyright notice and this permission notice shall be included in all
+//copies or substantial portions of the Software.
+
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//SOFTWARE.
+
+
+study("Dependent Variable Odd Generator v2.1", shorttitle = "DVOG v2.1",overlay = false)
+src = close 
+
+//Function Minkowski Distance :  All efforts goes to RicardoSantos 
+
+f_minkowski_distance(_a_x, _a_y, _b_x, _b_y, _p_value)=>
+    //sum the vector diference:
+    _sum = pow(abs(_a_x - _b_x), _p_value) + pow(abs(_a_y - _b_y), _p_value)
+    //root it:
+    _return = pow(_sum, (1 / _p_value))
+//  ||-------------------------------------------------------------------------||
+//  |}---------------------------------------------------------------------<•
+p = input(1.0)
+md1 = f_minkowski_distance(10, 10, 20, 20, 1)
+md2 = f_minkowski_distance(10, 10, 20, 20, 2)
+mdx = f_minkowski_distance(10, 10, 20, 20, p)
+
+h = valuewhen(high >= highest(10), high, 0)
+b = valuewhen(high >= highest(10), bar_index, 0)
+_mdn = f_minkowski_distance(h, b, close, bar_index, p)
+
+// Factor = mdn
+
+mdn = (rsi(_mdn,14)) / 100
+
+length = 14 * mdn
+
+
+// Essential Functions 
+
+f_sum(_src , _length) => 
+
+    _output  = 0.00 
+    
+    _length_adjusted = _length < 1 ? 1 : _length
+    
+    for i = 0 to _length_adjusted-1
+        _output := _output + _src[i]
+
+
+f_sma(_src, _length)=>
+    _length_adjusted = _length < 1 ? 1 : _length
+    float _sum = 0
+    for _i = 0 to (_length_adjusted - 1)
+        _sum := _sum + _src[_i]
+    _return = _sum / _length_adjusted
+   
+
+// Unlocked Exponential Moving Average Function
+
+f_ema(_src, _length)=>
+    _length_adjusted = _length < 1 ? 1 : _length
+    _multiplier = 2 / (_length_adjusted + 1)
+    _return  = 0.00
+    _return := na(_return[1]) ? _src : ((_src - _return[1]) * _multiplier) + _return[1]
+
+
+
+// Function Standard Deviation
+
+f_stdev(_src,_length) =>
+    float _output = na 
+    _length_adjusted = _length < 2 ? 2 : _length
+    _avg  = f_ema(_src , _length_adjusted)
+    evar  = (_src - _avg) * (_src - _avg)
+    evar2 = ((f_sum(evar,_length_adjusted))/_length_adjusted)
+    
+    _output := sqrt(evar2)
+
+
+// MONEY FLOW INDEX =====> FOR BULL OR BEAR MARKET (CLOSE)
+
+
+upper_s = f_sum(volume * (change(src) <= 0 ? 0 : src), length)
+lower_s = f_sum(volume * (change(src) >= 0 ? 0 : src), length)
+
+_market_index = rsi(upper_s, lower_s)
+
+
+// Price Odds
+
+// Conditions  
+
+_bull_gross  = (_market_index)
+_bear_gross  = (100 - _market_index )
+
+
+// Market Types with Dow Factor
+
+_temp_bull_gross     =  _bull_gross       
+
+_temp_bear_gross     =  _bear_gross 
+
+
+_coeff_normal = (_temp_bull_gross + _temp_bear_gross) / 100
+
+
+// ********* OUR RSI / MFI VALUE ***********
+
+_bull_gross2  = _temp_bull_gross / _coeff_normal
+_bear_gross2  = _temp_bear_gross / _coeff_normal
+
+// Temporary Pure Odds 
+
+_temp_stagnant = ((_bull_gross2 * _bear_gross2) / 100)
+_temp_bull     = _bull_gross2 - _temp_stagnant 
+_temp_bear     = _bear_gross2 - _temp_stagnant 
+
+
+// Now we ll do venn scheme (Probability Cluster)
+// Pure Bull + Pure Bear + Pure Stagnant = 100 
+// Markets will get their share in the Probability Cluster 
+
+ 
+_coeff = (_temp_stagnant + _temp_bull + _temp_bear) / 100
+
+_odd_bull     = _temp_bull     / _coeff
+_odd_bear     = _temp_bear     / _coeff
+_odd_stagnant = _temp_stagnant / _coeff
+
+
+// Plot data
+
+plot(_odd_bull    ,style = plot.style_histogram, color=color.green   ,linewidth=4, transp = 10)
+plot(_odd_bear    ,style = plot.style_histogram, color=color.red     ,linewidth=4, transp = 20)
+plot(_odd_stagnant,style = plot.style_histogram, color=color.yellow  ,linewidth=4, transp = 30)
